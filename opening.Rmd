@@ -1,0 +1,130 @@
+---
+title: "opening"
+author: "Siyan Wang"
+date: "2023-11-11"
+output: html_document
+---
+```{r setup, include=FALSE}
+library(readr)
+library(tidytext)
+library(tidyverse)
+library(dplyr)
+library(wordcloud)
+library(tm)
+library(stringr)
+library(reshape2)
+```
+
+### Read data
+```{r, message=FALSE}
+open_data<-read_csv("~/Desktop/opening/open_business_reviews.csv")
+open_bad_review<-read_csv("~/Desktop/opening/open-bad-reviews.csv")
+open_good_review <- read_csv("~/Desktop/opening/open-good-reviews.csv")
+
+par(mar = rep(0, 4)) # setting the margin
+```
+
+## opening store reviews analysis
+
+```{r,warning=FALSE,message=FALSE}
+#all reviews wordcloud
+tidy_data<-open_data%>%
+  #select(-user_id,-review_id)%>%
+  unnest_tokens(word,text)%>% 
+  anti_join(stop_words)%>%
+  mutate(word = str_remove_all(word, "\\d+"))%>%
+  filter(!word %in% c("",'.'))
+
+#all goodreview wordcloud 
+with(count(tidy_data,word),
+     wordcloud(word,n,max.words = 100,
+               colors=brewer.pal(8, "Dark2")))
+show(tidy_data%>%
+  count(word,sort = TRUE))
+```
+
+
+## opening good review analysis
+We define good reviews as those reviews rate higher than 3, which is 4-5 stars
+```{r,warning=FALSE,message=FALSE}
+tidy_good_data<-open_good_review%>%
+  #select(-user_id,-review_id)%>%
+  unnest_tokens(word,text)%>% 
+  anti_join(stop_words)%>%
+  mutate(word = str_remove_all(word, "\\d+"))%>%
+  filter(!word %in% c("",'.'))
+
+#all good review wordcloud 
+with(count(tidy_good_data,word),
+     wordcloud(word,n,max.words = 100,
+               colors=brewer.pal(8, "Dark2")))
+
+show(tidy_good_data%>%
+  count(word,sort = TRUE))
+
+```
+sentiment analysis
+
+```{r, message=FALSE,warning=FALSE}
+
+###Using sentiment dictionary "bing"
+senti_num_bing<-tidy_good_data%>%
+  inner_join(get_sentiments("bing"))%>%
+  count(sentiment)%>%
+  spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
+  mutate(sentiment = positive /negative) # # of positive words - # of negative owrds
+
+show(senti_num_bing) # the sentiment preference of all review
+
+tidy_good_data%>%
+  select(-user_id,-review_id,date)%>% #delete three columns for convenience
+  inner_join(get_sentiments("bing"))%>%
+  count(word,sentiment,sort = TRUE)%>%
+  acast(word~sentiment, value.var='n', fill=0)%>%
+  comparison.cloud(colors = c("blue","orange"),
+                   max.words = 100)
+
+```
+
+
+## open bad review analysis
+
+```{r,message=FALSE,warning=FALSE}
+tidy_bad_data<-open_bad_review%>%
+  #select(-user_id,-review_id)%>%
+  unnest_tokens(word,text)%>% 
+  anti_join(stop_words)%>%
+  mutate(word = str_remove_all(word, "\\d+"))%>%
+  filter(!word %in% c("",'.'))
+
+#all badreview wordcloud 
+with(count(tidy_bad_data,word),
+     wordcloud(word,n,max.words = 100,
+               colors=brewer.pal(8, "Dark2")))
+
+show(tidy_bad_data%>%
+  count(word,sort = TRUE))
+```
+
+sentiment analysis
+```{r, message=FALSE,warning=FALSE}
+
+###Using sentiment dictionary "bing"
+senti_num_bing2<-tidy_bad_data%>%
+  inner_join(get_sentiments("bing"))%>%
+  count(sentiment)%>%
+  spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
+  mutate(sentiment = positive / negative) # # of positive words - # of negative owrds
+
+show(senti_num_bing2) # the sentiment preference of all review
+
+tidy_bad_data%>%
+  select(-user_id,-review_id,date)%>% #delete three columns for convenience
+  inner_join(get_sentiments("bing"))%>%
+  count(word,sentiment,sort = TRUE)%>%
+  acast(word~sentiment, value.var='n', fill=0)%>%
+  comparison.cloud(colors = c("blue","orange"),
+                   max.words = 100)
+
+
+```
